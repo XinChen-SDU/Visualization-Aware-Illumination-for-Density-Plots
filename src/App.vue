@@ -1,47 +1,59 @@
-<script setup>
-import HelloWorld from './components/HelloWorld.vue'
-import TheWelcome from './components/TheWelcome.vue'
+<script>
+import DensityMapViewer from './components/DensityMapViewer.vue'
+import SettingSidebar from './components/SettingSidebar.vue'
+
+import 'element-plus/es/components/loading/style/css'
+import { ElLoading } from 'element-plus'
+
+export default {
+  components: {
+    SettingSidebar,
+    DensityMapViewer
+  },
+  methods: {
+    updateDensityPlot(defaultSettings) {
+      this.$refs.viewer.createDensityPlot(defaultSettings);
+    },
+    updateBandwidth(bandwidth) {
+      this.$refs.sidebar.useSilvermanBandwidth(bandwidth);
+    }
+  },
+  mounted() {
+    ElLoading.service({
+      lock: true,
+      text: 'Loading OpenCV.js',
+      background: 'rgba(0, 0, 0, 0.7)',
+    })
+  }
+}
 </script>
 
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="./assets/logo.svg" width="125" height="125" />
-
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
-    </div>
-  </header>
-
-  <main>
-    <TheWelcome />
-  </main>
+  <el-container>
+    <el-header>
+      <img alt="Density logo" class="logo" src="./assets/density-plot-logo.svg" width="65" height="65" />
+      <span class="title">Visualization-aware Illuminated Density Plots</span>
+    </el-header>
+    <el-container>
+      <SettingSidebar @update="updateDensityPlot" ref="sidebar"/>
+      <DensityMapViewer @updateBW="updateBandwidth" ref="viewer"/>
+    </el-container>
+  </el-container>
 </template>
 
 <style scoped>
-header {
-  line-height: 1.5;
-}
-
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
-}
-
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
+  .el-header {
+    background-color: #000;
+    color: var(--el-text-color-primary);
+    line-height: 63px;
+    padding-left: 5px;
   }
 
-  .logo {
-    margin: 0 2rem 0 0;
+  .title {
+    position: absolute;
+    margin-left: 5px;
+    font-size: 20pt;
+    color: #dedede;
+    user-select: none;
   }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
-}
 </style>
