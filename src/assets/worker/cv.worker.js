@@ -1,3 +1,5 @@
+/* eslint-disable no-undef */
+
 /**
  *  Here we will check from time to time if we can access the OpenCV
  *  functions. We will return in a callback if it's been resolved
@@ -17,7 +19,7 @@ function waitForOpencv(callbackFn, waitTimeMs = 30000, stepTimeMs = 100) {
     }
   }, stepTimeMs)
 }
-
+  
 function getColormapCode(colormap) {
   switch (colormap) {
     case 'Plasma':
@@ -30,58 +32,84 @@ function getColormapCode(colormap) {
       return cv.COLORMAP_TURBO;
     case 'Cividis':
       return cv.COLORMAP_CIVIDIS;
+    case 'Magma':
+      return cv.COLORMAP_MAGMA;
     default:
       return cv.COLORMAP_PLASMA;
   }
+}
+
+function setupLightDirection(normal_xy) {
+  let normal_a = math.mean(normal_xy, 0);
+  let dk = math.subtract(normal_xy, normal_a);
+
+  const pca = new PCA(dk);
+  const Vt = math.transpose(pca.getEigenvectors().data.map(arr => Array.from(arr))); // for consistence with sklearn.decomposition.PCA
+  let lambda_eigen_v = math.multiply(pca.getStandardDeviations()[0], Vt[0]);
+  let light_direction = math.add(normal_a, lambda_eigen_v);
+  if(light_direction[0] > 0)
+      light_direction = math.subtract(normal_a, lambda_eigen_v);
+
+  let z_component = math.sin(1.0471975511965976); // 60*Math.PI/180 -> 1.0471975511965976
+  light_direction = math.multiply(light_direction, math.sqrt(1-z_component**2)/math.norm(light_direction));
+  light_direction.push(z_component);
+  return light_direction
+}
+
+// compute the normal vectors from the partial derivatives
+function calNormal(elevation, vert_exag) {
+  cv.multiply(elevation, cv.Mat.ones(elevation.rows, elevation.cols, cv.CV_32F), elevation, vert_exag);
+  let grad_x = new cv.Mat(), grad_y = new cv.Mat();
+  cv.Sobel(elevation, grad_x, ddepth=cv.CV_32F, dx=1, dy=0, ksize=1);
+  cv.Sobel(elevation, grad_y, ddepth=cv.CV_32F, dx=0, dy=1, ksize=1);
+
+  const dx_ = math.multiply(Array.from(grad_x.data32F), -0.5);
+  const dy_ = math.multiply(Array.from(grad_y.data32F), -0.5);
+  const dz_ = math.ones(math.size(dx_));
+  let normal = math.transpose([dx_, dy_, dz_]);
+  for(let i=0; i<normal.length; ++i) {
+    normal[i] = math.divide(normal[i], math.norm(normal[i]));
+  }
+
+  grad_x.delete(); grad_y.delete();
+  return normal;
 }
 
 /**
  * With OpenCV we have to work with the images as cv.Mat (matrices),
  * so you'll have to transform the ImageData to it.
  */
-function enhanceDensityMap({ msg, densitymap, paramStr, valueLensStr, regionLensStr }) {
-  let mapWidth = densitymap.length, mapHeight = densitymap[0].length;
-  let src = cv.matFromArray(mapWidth, mapHeight, cv.CV_32F, densitymap.flat());
-  cv.flip(src, src, 0);
-
+function enhanceDensityMap({ msg, densitymap, small_bw_data, paramStr }) {
   let params = JSON.parse(paramStr);
-  let baseLayer = new cv.Mat(), detailLayer = new cv.Mat(), result = new cv.Mat();
-  switch (params.filter) {
-    case 'gaussian':
-      let d = 2*params.filterParams.radius-1, sigma = params.filterParams.sigma;
-      cv.GaussianBlur(src, baseLayer, new cv.Size(d,d), sigma, sigma, cv.BORDER_DEFAULT);
-      break;
-    case 'guided':
-      guidedFilter(src, src, baseLayer, params.filterParams.radius, params.filterParams.eps);
-      break;
-    default:
-      throw new Error('Invalid filter type')
-  }
-  cv.subtract(src, baseLayer, detailLayer);
-  let boostingMat = getBoostingMatrix(src, params, valueLensStr, regionLensStr);
-  cv.add(baseLayer, detailLayer.mul(boostingMat, 1), result);
-  // truncate the values exceeded the value range of input density map
-  // the 4th argument (maxval) is unnecessary, so pass undefined to it
-  const minmaxLoc = cv.minMaxLoc(src);
-  cv.threshold(result, result, minmaxLoc.minVal, undefined, cv.THRESH_TOZERO);
-  cv.threshold(result, result, minmaxLoc.maxVal, undefined, cv.THRESH_TRUNC);
+  let mapWidth = Math.trunc(params.width/2), mapHeight = Math.trunc(params.height/2);
+  let src = cv.matFromArray(mapHeight, mapWidth, cv.CV_32F, densitymap),
+  small_src = cv.matFromArray(mapHeight, mapWidth, cv.CV_32F, small_bw_data);
+
+  let diff = new cv.Mat();
+  cv.subtract(src, small_src, diff);
+  const normal = calNormal(diff, params.eta);
+
+  // filter out empty regions and select the x- and y- dimension
+  const filtered_normal = normal.filter((_, i) => small_bw_data[i] > 1e-6);
+  const light = setupLightDirection(filtered_normal.map(row => row.slice(0, 2)));
+  let intensity = math.multiply(normal, light);
+  src = cv.matFromArray(mapHeight, mapWidth, cv.CV_32F, intensity);
 
   // scale to [0,255], then convert to gray scale
-  cv.normalize(result, result, 0, 255, cv.NORM_MINMAX);
-  result.convertTo(result, cv.CV_8UC1);
+  cv.normalize(src, src, 0, 255, cv.NORM_MINMAX);
+  src.convertTo(src, cv.CV_8UC1);
+  if(params.colormap==="Magma" || params.colormap==="Inferno" || params.colormap==="Cividis") { // for a light background, reverse the order
+    cv.bitwise_not(src, src);
+  }
 
   let dst = new cv.Mat();
   // fit the display size
-  cv.resize(result, dst, new cv.Size(params.width, params.height));
+  cv.resize(src, dst, new cv.Size(params.width, params.height));
   // colorize the density map
-  if (params.colormap === 'Greys') {
-    cv.cvtColor(dst, dst, cv.COLOR_GRAY2RGBA);
-  }
-  else {
-    cv.applyColorMap(dst, dst, getColormapCode(params.colormap));
-    cv.cvtColor(dst, dst, cv.COLOR_BGR2RGBA);
-  }
+  cv.applyColorMap(dst, dst, getColormapCode(params.colormap));
+  cv.cvtColor(dst, dst, cv.COLOR_BGR2RGBA);
 
+  cv.flip(dst, dst, 0);
   const clampedArray = new ImageData(
     new Uint8ClampedArray(dst.data),
     dst.cols,
@@ -89,79 +117,7 @@ function enhanceDensityMap({ msg, densitymap, paramStr, valueLensStr, regionLens
   )
   postMessage({ msg, imgData: clampedArray })
   src.delete(); dst.delete();
-  baseLayer.delete(); detailLayer.delete(); result.delete();
-  boostingMat.delete();
-}
-
-function getBoostingMatrix(src, params, valueLensStr, regionLensStr) {
-  let boostingMat = cv.Mat.ones(src.rows, src.cols, cv.CV_32F);
-  cv.multiply(boostingMat, cv.Mat.ones(src.rows, src.cols, cv.CV_32F), boostingMat, params.detailFactor);
-
-  let valueLens = JSON.parse(valueLensStr);
-  for (let i = 0; i < src.rows; ++i) 
-    for (let j = 0; j < src.cols; ++j)
-      if (src.floatAt(i, j) >= valueLens.start && src.floatAt(i, j) <= valueLens.end)
-        boostingMat.floatPtr(i, j)[0] = valueLens.factor;
-
-  let regionLens = JSON.parse(regionLensStr);
-  for (let i = regionLens.dataMinY; i < regionLens.dataMaxY; ++i) 
-    for (let j = regionLens.dataMinX; j < regionLens.dataMaxX; ++j)
-      boostingMat.floatPtr(i, j)[0] = regionLens.factor;
-
-  cv.boxFilter(boostingMat, boostingMat, cv.CV_32F, new cv.Size(11,11));
-  return boostingMat;
-}
-
-/**
- * Implementation of guided filter.
- * He, Kaiming, Jian Sun, and Xiaoou Tang. "Guided image filtering." IEEE transactions on pattern analysis and machine intelligence 35.6 (2012): 1397-1409.
- */
-function guidedFilter(source, guided_image, output, radius, epsilon) {
-    let guided = guided_image.clone();
-
-    let source_32f = new cv.Mat();
-    let guided_32f = new cv.Mat();
-    source.convertTo(source_32f, cv.CV_32F);
-    guided.convertTo(guided_32f, cv.CV_32F);
-
-    let let_Ip = new cv.Mat();
-    let let_I2 = new cv.Mat();
-    cv.multiply(guided_32f, source_32f, let_Ip);
-    cv.multiply(guided_32f, guided_32f, let_I2);
-
-    let mean_p = new cv.Mat();
-    let mean_I = new cv.Mat();
-    let mean_Ip = new cv.Mat();
-    let mean_I2 = new cv.Mat();
-    let win_size = new cv.Size(2 * radius + 1, 2 * radius + 1);
-    cv.boxFilter(source_32f, mean_p, cv.CV_32F, win_size);
-    cv.boxFilter(guided_32f, mean_I, cv.CV_32F, win_size);
-    cv.boxFilter(let_Ip, mean_Ip, cv.CV_32F, win_size);
-    cv.boxFilter(let_I2, mean_I2, cv.CV_32F, win_size);
-
-    let cov_Ip = new cv.Mat();
-    let var_I = new cv.Mat();
-    cv.subtract(mean_Ip,  mean_I.mul(mean_p, 1), cov_Ip);
-    cv.subtract(mean_I2,  mean_I.mul(mean_I, 1), var_I);
-
-    for (let i = 0; i < guided_image.rows; ++i) 
-        for (let j = 0; j < guided_image.cols; ++j)
-          var_I.floatPtr(i, j)[0] += epsilon;
-
-    let a = new cv.Mat();
-    let b = new cv.Mat();
-    cv.divide(cov_Ip, var_I, a);
-    cv.subtract(mean_p, a.mul(mean_I, 1), b); 
-
-    let mean_a = new cv.Mat();
-    let mean_b = new cv.Mat();
-    cv.boxFilter(a, mean_a, cv.CV_32F, win_size);
-    cv.boxFilter(b, mean_b, cv.CV_32F, win_size);
-    cv.add(mean_a.mul(guided_32f, 1), mean_b, output)
-
-    guided.delete(); source_32f.delete(); guided_32f.delete(); let_Ip.delete(); let_I2.delete();
-    mean_p.delete(); mean_I.delete(); mean_Ip.delete(); mean_I2.delete(); cov_Ip.delete(); 
-    var_I.delete(); a.delete(); b.delete(); mean_a.delete(); mean_b.delete();
+  small_src.delete(); diff.delete();
 }
 
 /**
@@ -169,11 +125,13 @@ function guidedFilter(source, guided_image, output, radius, epsilon) {
  * into the worker. Without this, there would be no communication possible
  * with the project.
  */
-onmessage = function (e) {
+onmessage = async function (e) {
   switch (e.data.msg) {
     case 'load': {
       // Import Webassembly script
       self.importScripts(e.data.openCvPath)
+      math = await import('mathjs');
+      PCA = (await import('ml-pca')).PCA;
       if (cv instanceof Promise) {
           cv.then((target) => {
               cv = target;

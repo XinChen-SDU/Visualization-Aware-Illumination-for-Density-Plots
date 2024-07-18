@@ -1,5 +1,3 @@
-import utils from '@/utils'
-
 class CV {
   /**
    * We will use this method privately to communicate with the worker and
@@ -58,14 +56,9 @@ class CV {
   /**
    * apply the user-specified filter to the given density map
    */
-  enhanceDensityMap(array_2d, params, valueLens, regionLens) {
+  enhanceDensityMap(large_bw_data, small_bw_data, params) {
     let paramStr = JSON.stringify(params);
-    let valueLensStr = JSON.stringify(valueLens);
-    let regionLensStr = JSON.stringify(regionLens);
-    let tmpData = array_2d.map(row => {
-      return row.map(utils.getTransformFunction(params.type))
-    });
-    return this._dispatch({msg: 'enhancing', densitymap: tmpData, paramStr, valueLensStr, regionLensStr })
+    return this._dispatch({msg: 'enhancing', densitymap: large_bw_data, small_bw_data, paramStr})
   }
 }
 

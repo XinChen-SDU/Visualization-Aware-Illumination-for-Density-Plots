@@ -6,7 +6,7 @@ import utils from '@/utils'
 import { select } from 'd3-selection'
 import { scaleSequential } from 'd3-scale'
 import { ElLoading } from 'element-plus'
-import { sum } from 'mathjs'
+import { sum, multiply } from 'mathjs'
 import { density2d } from 'fast-kde'
 
 export default {
@@ -71,7 +71,7 @@ export default {
     //   mapBrushLayer.append('g')
     //     .call(this.regionBrush);
     // },
-    renderDensityMap(data, params) {
+    renderDensityMap(data, small_bw_data, params) {
       // let regionLensInfo = this.tableData.find(i=>i.type=='Region lens'), regionLens;
       // if (regionLensInfo) {
       //   let range = JSON.parse(regionLensInfo.range);
@@ -86,7 +86,7 @@ export default {
       // else { regionLens = { dataMinX:-1,dataMinY:-1,dataMaxX:-1,dataMaxY:-1,factor:0 } }
 
       let canvas = document.getElementById('densitymap');
-      cv.enhanceDensityMap(data, params)
+      cv.enhanceDensityMap(data, small_bw_data, params)
         .then(e => {
           utils.drawImageData(canvas, e.data.imgData);
         })
@@ -94,12 +94,15 @@ export default {
     },
     renderDensityMapAndColorbar(data, params) {
       let tmpParams = params === undefined ? this.params : params;
-      let d2 = density2d(data, { bandwidth: tmpParams.large_bw, bins: [tmpParams.width, tmpParams.height] });
-      let points = d2.grid();
-      points = points/sum(points)*data.length
-      // large_bw_kde = points.reshape(X.shape[0], X.shape[1]).T ??
-        
-      this.renderDensityMap(points, tmpParams);
+      let mapWidth = Math.trunc(tmpParams.width/2), mapHeight = Math.trunc(tmpParams.height/2); // make the display size of outlier larger
+      let d2 = density2d(data, { bandwidth: tmpParams.large_bw, bins: [mapWidth, mapHeight] });
+      let points = Array.from(d2.grid());
+      points = multiply(points, data.length/sum(points));
+      let small_bw_d2 = density2d(data, { bandwidth: tmpParams.small_bw, bins: [mapWidth, mapHeight] });
+      let small_bw_points = Array.from(small_bw_d2.grid());
+      small_bw_points = multiply(small_bw_points, data.length/sum(small_bw_points));
+
+      this.renderDensityMap(points, small_bw_points, tmpParams);
       this.generateColorbar(points, tmpParams);
     },
     generateColorbar(data, params) {
