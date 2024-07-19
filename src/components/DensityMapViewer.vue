@@ -6,7 +6,7 @@ import utils from '@/utils'
 import { select } from 'd3-selection'
 import { scaleSequential } from 'd3-scale'
 import { ElLoading } from 'element-plus'
-import { sum, multiply } from 'mathjs'
+import { sum, multiply, min, max } from 'mathjs'
 import { density2d } from 'fast-kde'
 
 export default {
@@ -18,6 +18,7 @@ export default {
       regionBrush: undefined,
       regionLensFactor: 0,
       params: undefined,
+      extent: [],
     }
   },
   methods: {
@@ -30,13 +31,25 @@ export default {
       } else if (this.params.dataset !== this.datasetName) {
         this.datasetName = this.params.dataset;
         let dataSrc = '/datasets/' + this.datasetName;
+        ElLoading.service({
+          lock: true,
+          text: 'Loading Dataset: '+this.datasetName,
+          background: 'rgba(0, 0, 0, 0.7)',
+        })
         utils.fetchData(dataSrc + '.csv')
           .then(data => {
-            if(!data) {throw new Error('undefined data');}
+            if (!data) { throw new Error('undefined data'); }
             this.dataBeingDisplayed = data;
+            const minVals = min(data, 0), maxVals = max(data, 0);
+            const offsets = multiply([maxVals[0] - minVals[0], maxVals[1] - minVals[1]], 0.02);
+            this.extent = [[minVals[0] - offsets[0], maxVals[0] + offsets[0]],
+                          [minVals[1] - offsets[1], maxVals[1] + offsets[1]]];
 
             let silverman_bw = Number(utils.silvermansRuleOfThumb(data).toFixed(2));
             this.$emit("updateBW", silverman_bw); // triggle setting update
+
+            ElLoading.service().close();
+            console.log(`Dataset ${this.datasetName} loaded.`);
           });
       } else { // data has been loaded
         this.renderDensityMapAndColorbar(this.dataBeingDisplayed);
@@ -95,10 +108,10 @@ export default {
     renderDensityMapAndColorbar(data, params) {
       let tmpParams = params === undefined ? this.params : params;
       let mapWidth = Math.trunc(tmpParams.width/2), mapHeight = Math.trunc(tmpParams.height/2); // make the display size of outlier larger
-      let d2 = density2d(data, { bandwidth: tmpParams.large_bw, bins: [mapWidth, mapHeight] });
+      let d2 = density2d(data, { bandwidth: tmpParams.large_bw, extent: this.extent, bins: [mapWidth, mapHeight] });
       let points = Array.from(d2.grid());
       points = multiply(points, data.length/sum(points));
-      let small_bw_d2 = density2d(data, { bandwidth: tmpParams.small_bw, bins: [mapWidth, mapHeight] });
+      let small_bw_d2 = density2d(data, { bandwidth: tmpParams.small_bw, extent: this.extent, bins: [mapWidth, mapHeight] });
       let small_bw_points = Array.from(small_bw_d2.grid());
       small_bw_points = multiply(small_bw_points, data.length/sum(small_bw_points));
 
@@ -118,12 +131,11 @@ export default {
       const [minVal, maxVal] = utils.extent(data);
       let colorScale = scaleSequential(utils.getInterpolateFunc(params.colormap))
                         .domain([minVal, maxVal]);
-      let tickValues = utils.getTickValues(minVal, maxVal);
 
       const colorbarWidth = 20, colorbarHeight = params.height-40;
       let cbV = colorbarV(colorScale, colorbarWidth, colorbarHeight)
-                .tickValues(tickValues)
-                .tickFormat(x=>x.toFixed(0));
+                .tickNumber(7)
+                .tickFormat(x=>x.toFixed(3));
       grV.call(cbV);
     },
     takeScreenshot() {

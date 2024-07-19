@@ -7,7 +7,7 @@ let vertical = 1,
 
 function colorbar(orient, scale, width, height) {
 
-    let tickValues = scale.domain();
+    let tickNumber = 7;
     let tickFormat = x => x;
     let linearScale = scaleLinear()
         .domain(scale.domain())
@@ -43,8 +43,7 @@ function colorbar(orient, scale, width, height) {
             });
 
         let myAxis = (orient === horizontal) ? axisBottom(linearScale) : axisRight(linearScale);
-        if (tickValues == null) tickValues = myAxis.tickValues();
-        else myAxis.tickValues(tickValues);
+        myAxis.ticks(tickNumber);
         myAxis.tickFormat(tickFormat);
         context.append("g")
             .attr("class", "colorbar axis")
@@ -52,20 +51,20 @@ function colorbar(orient, scale, width, height) {
     }
 
     // set and return for chaining, or get
-    colorbar.tickValues = function (_) {
-        return arguments.length ? (tickValues = _, colorbar) : tickValues;
+    colorbar.tickNumber = function (_) {
+        return arguments.length ? (tickNumber = _, colorbar) : tickNumber;
     };
 
     colorbar.tickFormat = function (_) {
         return arguments.length ? (tickFormat = _, colorbar) : tickFormat;
     };
 
-    function translateX(d, i) {
+    function translateX(d) {
         if (orient === horizontal) return d;
         else return 0;
     }
 
-    function translateY(d, i) {
+    function translateY(d) {
         if (orient === horizontal) return 0;
         else return d;
     }

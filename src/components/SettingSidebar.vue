@@ -12,7 +12,7 @@ export default {
         height: 600,
         colormap: 'Magma',
         large_bw: 1,
-        small_bw: Number((1/900).toFixed(4)),
+        small_bw: Number((1/450).toFixed(4)),
         eta: 5,
         phi: -25,
       },
@@ -38,12 +38,9 @@ export default {
       } else {
         tmpPhi=-25;
       }
-      this.settings = {dataset: this.settings.dataset,
-        width: 900,
-        height: 600,
-        colormap: 'Magma',
+      this.settings = {...this.settings,
         large_bw: this.silverman_bw,
-        small_bw: Number((1/900).toFixed(4)),
+        small_bw: Number((1/Math.trunc(this.settings.width/2)).toFixed(4)),
         eta: 5,
         phi: tmpPhi,
       }
@@ -133,7 +130,7 @@ export default {
           v-model="settings.large_bw"
           :step="0.01"
           :min="0.01"
-          :max="20"
+          :max="10"
           show-input />
       </el-form-item>
       <el-form-item label="Small KDE Bandwidth">
@@ -141,7 +138,7 @@ export default {
           v-model="settings.small_bw"
           :step="0.0001"
           :min="0.0001"
-          :max="5"
+          :max="1"
           show-input />
       </el-form-item>
       <el-form-item>

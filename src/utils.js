@@ -30,28 +30,6 @@ function extent(data) {
     return [minVal, maxVal];
 }
 
-function getTickValues(minVal, maxVal) {
-    let interval = maxVal - minVal, base = 1;
-    while(interval/base > 10) { base *= 10; }
-    let tickValues = [], start = Math.ceil(minVal/base);
-    for(let i=start, end = Math.ceil(maxVal/base); i<end; ++i) {
-        tickValues.push(i*base);
-    }
-    if(tickValues[0] > minVal) { tickValues.unshift(minVal); }
-        let transformed = [minVal,tickValues[1],tickValues[tickValues.length-1],maxVal];
-        if(tickValues[tickValues.length-1] < maxVal && (transformed[3]-transformed[2])/(transformed[3]-transformed[0]) > 0.02) {
-        tickValues.push(maxVal);
-    }
-    if(base > 1 && (transformed[1]-transformed[0])/(transformed[3]-transformed[0]) > 0.5) { // not enough ticks for smaller values
-        base /= 10;
-        start = Math.ceil(tickValues[1]/base)-1;
-        for(let i=start, end = Math.ceil(minVal/base); i>end; --i) {
-            tickValues.push(i*base);
-        }
-    }
-    return tickValues;
-}
-
 import { transpose, std, sort, quantileSeq, min } from 'mathjs'
 
 // using the same logic of KDEpy 
@@ -113,7 +91,6 @@ function getInterpolateFunc(colormap) {
 export default {
     fetchData,
     drawImageData,
-    getTickValues,
     getInterpolateFunc,
     extent,
     silvermansRuleOfThumb,
