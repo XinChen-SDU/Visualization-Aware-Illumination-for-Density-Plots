@@ -1,14 +1,6 @@
-# visualization-aware_illuminated_density_plots
+# Visualization-Aware Illumination for Density Plots
 
-This template should help get you started developing with Vue 3 in Vite.
-
-## Recommended IDE Setup
-
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vitejs.dev/config/).
+An interactive prototype for the algorithm proposed in our IEEE TVCG submission "Visualization-Aware Illumination for Density Plots".
 
 ## Project Setup
 
