@@ -21,7 +21,6 @@ export default defineConfig({
         ElementPlusResolver(),
 
         // Auto import icon components
-        // 自动导入图标组件
         IconsResolver({
           prefix: 'Icon',
         }),
@@ -33,7 +32,6 @@ export default defineConfig({
         ElementPlusResolver(),
 
         // Auto register icon components
-        // 自动注册图标组件
         IconsResolver({
           enabledCollections: ['ep'],
         }),
@@ -46,7 +44,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@': pathSrc
+      '@': pathSrc,
     }
   },
   server: {
@@ -56,4 +54,14 @@ export default defineConfig({
   preview: {
     port: 8711,
   },
+  build: {
+    rollupOptions: {
+      external: ['mathjs'],
+      output: {
+        globals: {
+          'mathjs': 'math'
+        }
+      }
+    }
+  }
 })

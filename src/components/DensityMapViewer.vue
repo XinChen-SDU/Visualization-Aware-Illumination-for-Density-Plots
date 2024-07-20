@@ -1,12 +1,11 @@
 <script>
-import cv from '@/cv'
-import { colorbarV } from '@/colorbar'
-import utils from '@/utils'
+import cv from '@/js/cv'
+import { colorbarV } from '@/js/colorbar'
+import utils from '@/js/utils'
 
 import { select } from 'd3-selection'
 import { scaleSequential } from 'd3-scale'
 import { ElLoading } from 'element-plus'
-import { sum, multiply, min, max } from 'mathjs'
 import { density2d } from 'fast-kde'
 
 export default {
@@ -19,6 +18,7 @@ export default {
       regionLensFactor: 0,
       params: undefined,
       extent: [],
+      isFirstLoading: true,
     }
   },
   methods: {
@@ -31,25 +31,37 @@ export default {
       } else if (this.params.dataset !== this.datasetName) {
         this.datasetName = this.params.dataset;
         let dataSrc = '/datasets/' + this.datasetName;
-        ElLoading.service({
-          lock: true,
-          text: 'Loading Dataset: '+this.datasetName,
-          background: 'rgba(0, 0, 0, 0.7)',
-        })
+        if(!this.isFirstLoading)
+          ElLoading.service({
+            lock: true,
+            text: 'Loading Dataset: '+this.datasetName,
+            background: 'rgba(0, 0, 0, 0.7)',
+          })
         utils.fetchData(dataSrc + '.csv')
-          .then(data => {
+          .then(async (data) => {
             if (!data) { throw new Error('undefined data'); }
             this.dataBeingDisplayed = data;
-            const minVals = min(data, 0), maxVals = max(data, 0);
-            const offsets = multiply([maxVals[0] - minVals[0], maxVals[1] - minVals[1]], 0.02);
+            if (!window.math) {
+              try {
+                const prefix = import.meta.url.includes('src') ? '/src' : '';
+                await utils.loadScript(`${prefix}/worker/math.min.js`);
+                console.log('mathjs version:', window.math.version);
+              } catch (error) {
+                console.error('Failed to load mathjs:', error);
+              }
+            }
+            const minVals = window.math.min(data, 0), maxVals = window.math.max(data, 0);
+            const offsets = window.math.multiply([maxVals[0] - minVals[0], maxVals[1] - minVals[1]], 0.02);
             this.extent = [[minVals[0] - offsets[0], maxVals[0] + offsets[0]],
                           [minVals[1] - offsets[1], maxVals[1] + offsets[1]]];
 
-            let silverman_bw = Number(utils.silvermansRuleOfThumb(data).toFixed(2));
+                          let silverman_bw = Number(utils.silvermansRuleOfThumb(data).toFixed(2));
             this.$emit("updateBW", silverman_bw); // triggle setting update
 
-            ElLoading.service().close();
+            if(!this.isFirstLoading)
+              ElLoading.service().close();
             console.log(`Dataset ${this.datasetName} loaded.`);
+            this.isFirstLoading = false;
           });
       } else { // data has been loaded
         this.renderDensityMapAndColorbar(this.dataBeingDisplayed);
@@ -110,10 +122,10 @@ export default {
       let mapWidth = Math.trunc(tmpParams.width/2), mapHeight = Math.trunc(tmpParams.height/2); // make the display size of outlier larger
       let d2 = density2d(data, { bandwidth: tmpParams.large_bw, extent: this.extent, bins: [mapWidth, mapHeight] });
       let points = Array.from(d2.grid());
-      points = multiply(points, data.length/sum(points));
+      points = window.math.multiply(points, data.length/window.math.sum(points));
       let small_bw_d2 = density2d(data, { bandwidth: tmpParams.small_bw, extent: this.extent, bins: [mapWidth, mapHeight] });
       let small_bw_points = Array.from(small_bw_d2.grid());
-      small_bw_points = multiply(small_bw_points, data.length/sum(small_bw_points));
+      small_bw_points = window.math.multiply(small_bw_points, data.length/window.math.sum(small_bw_points));
 
       this.renderDensityMap(points, small_bw_points, tmpParams);
       this.generateColorbar(points, tmpParams);

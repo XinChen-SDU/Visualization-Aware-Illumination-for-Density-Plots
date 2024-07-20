@@ -21,6 +21,16 @@ function drawImageData(canvas, imgData) {
     }
 }
 
+async function loadScript(url) {
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = url;
+      script.onload = () => resolve(window.math);
+      script.onerror = error => reject(error);
+      document.head.appendChild(script);
+    });
+  }  
+
 function extent(data) {
     let minVal = Infinity, maxVal = -Infinity;
     data.map(val => {
@@ -30,8 +40,6 @@ function extent(data) {
     return [minVal, maxVal];
 }
 
-import { transpose, std, sort, quantileSeq, min } from 'mathjs'
-
 // using the same logic of KDEpy 
 // see also: https://github.com/tommyod/KDEpy/blob/master/KDEpy/bw_selection.py
 function silvermansRuleOfThumb(data) {
@@ -40,21 +48,21 @@ function silvermansRuleOfThumb(data) {
     if(n < 1) 
         throw new Error("Data must be of length > 0.")
 
-    let transposeData = transpose(data);
+    let transposeData = window.math.transpose(data);
     let bw_list = [];
     for(let arr of transposeData) {
-        arr = sort(arr);
-        let sigma = std(arr);
+        arr = window.math.sort(arr);
+        let sigma = window.math.std(arr);
         // scipy.stats.norm.ppf(.75) - scipy.stats.norm.ppf(.25) -> 1.3489795003921634
-        let IQR = (quantileSeq(arr, .75, true) - quantileSeq(arr, .25, true))/1.3489795003921634;
+        let IQR = (window.math.quantileSeq(arr, .75, true) - window.math.quantileSeq(arr, .25, true))/1.3489795003921634;
 
-        sigma = min(sigma, IQR);
+        sigma = Math.min(sigma, IQR);
         let h;
         if(sigma>0) {
             h = sigma * Math.pow(n*3/4, -0.2);
         } else {
             // stats.norm.ppf(.99) - stats.norm.ppf(.01) = 4.6526957480816815
-            IQR = (quantileSeq(arr, .99, true) - quantileSeq(arr, .01, true)) / 4.6526957480816815
+            IQR = (window.math.quantileSeq(arr, .99, true) - window.math.quantileSeq(arr, .01, true)) / 4.6526957480816815
             if(IQR>0)
                 h = IQR * Math.pow(n*3/4, -0.2);
             else
@@ -64,7 +72,7 @@ function silvermansRuleOfThumb(data) {
         bw_list.push(h);
     }
   
-    return min(bw_list);
+    return Math.min(...bw_list);
   }
   
 import { interpolatePlasma, interpolateInferno, interpolateCividis, interpolateViridis, interpolateTurbo, interpolateMagma } from 'd3-scale-chromatic'
@@ -91,6 +99,7 @@ function getInterpolateFunc(colormap) {
 export default {
     fetchData,
     drawImageData,
+    loadScript,
     getInterpolateFunc,
     extent,
     silvermansRuleOfThumb,

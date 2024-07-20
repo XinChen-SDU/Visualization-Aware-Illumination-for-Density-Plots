@@ -17,7 +17,7 @@ export default {
         phi: -25,
       },
       silverman_bw: 1,
-      datasets: ['diabetes', 'facial', 'PersonActivity', 'CreditCardFraud', 'satimage', 'synthesis1', 'synthesis2', 'synthesis3', 'synthesis4', 'synthesis5'],
+      datasets: ['diabetes', 'facial', 'PersonActivity', 'taxis', 'CreditCardFraud', 'satimage', 'synthesis1', 'synthesis2', 'synthesis3', 'synthesis4', 'synthesis5'],
       colormaps: ['Magma', 'Plasma', 'Viridis', 'Inferno', 'Turbo', 'Cividis', ],
     }
   },
@@ -27,7 +27,14 @@ export default {
     }, 200),
     useSilvermanBandwidth(bandwidth) {
       this.silverman_bw=bandwidth;
-      this.settings.large_bw=bandwidth;
+      if(this.settings.dataset === 'taxis') {
+        this.settings = {...this.settings,
+          large_bw: bandwidth,
+          small_bw: 2e-4,
+        }
+      } else {
+        this.settings.large_bw=bandwidth;
+      }
     },
     resetSettings() {
       let tmpPhi;
@@ -40,7 +47,8 @@ export default {
       }
       this.settings = {...this.settings,
         large_bw: this.silverman_bw,
-        small_bw: Number((1/Math.trunc(this.settings.width/2)).toFixed(4)),
+        small_bw: this.settings.dataset === 'taxis' ? 2e-4
+        : Number((1/Math.trunc(this.settings.width/2)).toFixed(4)),
         eta: 5,
         phi: tmpPhi,
       }
@@ -128,8 +136,8 @@ export default {
       <el-form-item label="Large KDE Bandwidth">
         <el-slider
           v-model="settings.large_bw"
-          :step="0.01"
-          :min="0.01"
+          :step="0.001"
+          :min="0.001"
           :max="10"
           show-input />
       </el-form-item>
@@ -150,6 +158,9 @@ export default {
         </el-button>
       </el-form-item>
     </el-form>
+    <div class="warning">
+      Note: Processing the taxis and synthesis5 datasets may be slow due to their large size!
+    </div>
   </el-aside>
 </template>
 
@@ -167,5 +178,14 @@ export default {
 
   .text-center {
     text-align: center;
+  }
+
+  .warning {
+    color: #e6a23c;
+    background-color: #dbdbdb;
+    text-align: center;
+    margin: 0 10px 0 10px;
+    font-size: 18pt;
+    padding: 5px 0 5px 0;
   }
 </style>

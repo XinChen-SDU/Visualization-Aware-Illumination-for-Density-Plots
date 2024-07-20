@@ -41,6 +41,17 @@ function getColormapCode(colormap) {
   }
 }
 
+function PCA(data) {
+  const vars = math.variance(data, 0);
+  const data_t = math.transpose(data);
+  const covarianceXY = math.divide(math.multiply(data_t[0], data_t[1]), data.length - 1);
+
+  let ans = math.eigs([[vars[0], covarianceXY], [covarianceXY, vars[1]]]);
+  let maxIdx = ans.eigenvectors.reduce((maxIdx, curVal, idx) => curVal.value > ans.values[maxIdx] ? idx : maxIdx, 0);
+
+  return ans.eigenvectors[maxIdx];
+}
+
 function setupLightDirection(normal_xy) {
   let normal_a = math.mean(normal_xy, 0);
   let i = normal_xy.length;
@@ -49,9 +60,9 @@ function setupLightDirection(normal_xy) {
     normal_xy[i][1] = normal_xy[i][1]-normal_a[1];
   }
 
-  const pca = new PCA(normal_xy);
+  const ans = PCA(normal_xy);
   // const Vt = math.transpose(pca.getEigenvectors().data.map(arr => Array.from(arr))); // for consistence with sklearn.decomposition.PCA
-  let lambda_eigen_v = math.multiply(pca.getStandardDeviations()[0], Array.from(pca.getEigenvectors().data[0]));
+  let lambda_eigen_v = math.multiply(math.sqrt(ans.value), ans.vector);
   let light_direction = math.add(normal_a, lambda_eigen_v);
   if(light_direction[0] > 0)
       light_direction = math.subtract(normal_a, lambda_eigen_v);
@@ -165,9 +176,7 @@ onmessage = async function (e) {
   switch (e.data.msg) {
     case 'load': {
       // Import Webassembly script
-      self.importScripts(e.data.openCvPath)
-      math = await import('mathjs');
-      PCA = (await import('ml-pca')).PCA;
+      self.importScripts(...e.data.importPaths)
       if (cv instanceof Promise) {
           cv.then((target) => {
               cv = target;
