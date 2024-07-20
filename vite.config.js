@@ -13,6 +13,7 @@ const pathSrc = fileURLToPath(new URL('./src', import.meta.url));
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  base: '/Visualization-Aware-Illumination-for-Density-Plots/',
   plugins: [
     vue(),
     AutoImport({

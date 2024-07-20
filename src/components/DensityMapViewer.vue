@@ -30,7 +30,7 @@ export default {
         return;
       } else if (this.params.dataset !== this.datasetName) {
         this.datasetName = this.params.dataset;
-        let dataSrc = '/datasets/' + this.datasetName;
+        let dataSrc = `${import.meta.env.BASE_URL}datasets/` + this.datasetName;
         if(!this.isFirstLoading)
           ElLoading.service({
             lock: true,
@@ -43,8 +43,8 @@ export default {
             this.dataBeingDisplayed = data;
             if (!window.math) {
               try {
-                const prefix = import.meta.url.includes('src') ? '/src' : '';
-                await utils.loadScript(`${prefix}/worker/math.min.js`);
+                const prefix = import.meta.url.includes('src') ? 'src' : '';
+                await utils.loadScript(`${import.meta.env.BASE_URL}${prefix}/worker/math.min.js`);
                 console.log('mathjs version:', window.math.version);
               } catch (error) {
                 console.error('Failed to load mathjs:', error);
