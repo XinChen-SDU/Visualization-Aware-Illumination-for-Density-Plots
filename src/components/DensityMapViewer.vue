@@ -8,6 +8,31 @@ import { scaleSequential } from 'd3-scale'
 import { ElLoading } from 'element-plus'
 import { density2d } from 'fast-kde'
 
+// store the extents of existing datasets for acceleration
+const dataset2extent = 
+  {'CreditCardFraud': [[-5.133801197725919, 12.35524091454825],
+    [-25.851125881720755, 9.941852762868804]],
+  'diabetes': [[-1.62, 134.62], [-0.6000000000000001, 82.6]],
+  'diamonds': [[-0.21480000000000002, 10.9548], [-43.94, 19192.94]],
+  'facial': [[280.46862, 373.51637999999997],
+    [195.98394000000002, 271.85506000000004]],
+  'HR_diagram': [[-0.7958553039999999, 5.1300181039999995],
+    [-16.857254933160235, 3.29692336782746]],
+  'PersonActivity': [[-0.39943570017814634, 5.878910900354385],
+    [-0.5838782602548599, 4.067547213435174]],
+  'satimage': [[-0.1929744, 1.8742544],
+    [-0.47720440000000003, 1.7891844000000001]],
+  'synthesis1': [[-27.200698, 29.936798], [-30.809722, 48.423822]],
+  'synthesis2': [[-44.146742, 24.037842],
+    [-25.138493999999998, 28.493993999999997]],
+  'synthesis3': [[-50.42919, 43.04549], [-20.766794, 57.945294000000004]],
+  'synthesis4': [[-14.942749999999998, 65.64945],
+    [-45.77783, 60.839330000000004]],
+  'synthesis5': [[-50.358874, 26.755774], [-32.939306, 39.341006]],
+  'taxis': [[-74.2392951965332, -73.71803359985351],
+    [40.5493692779541, 40.91200691223145]],
+  'uk_traffic_accident': [[-7.7017897, 1.9475747], [49.69604894, 60.97443606]]};
+
 export default {
   emits: ["updateBW"],
   data() {
@@ -50,12 +75,16 @@ export default {
                 console.error('Failed to load mathjs:', error);
               }
             }
-            const minVals = window.math.min(data, 0), maxVals = window.math.max(data, 0);
-            const offsets = window.math.multiply([maxVals[0] - minVals[0], maxVals[1] - minVals[1]], 0.02);
-            this.extent = [[minVals[0] - offsets[0], maxVals[0] + offsets[0]],
-                          [minVals[1] - offsets[1], maxVals[1] + offsets[1]]];
+            if (this.datasetName in dataset2extent) {
+              this.extent = dataset2extent[this.datasetName];
+            } else {
+              const minVals = window.math.min(data, 0), maxVals = window.math.max(data, 0);
+              const offsets = window.math.multiply([maxVals[0] - minVals[0], maxVals[1] - minVals[1]], 0.02);
+              this.extent = [[minVals[0] - offsets[0], maxVals[0] + offsets[0]],
+                            [minVals[1] - offsets[1], maxVals[1] + offsets[1]]];
+            }
 
-                          let silverman_bw = Number(utils.silvermansRuleOfThumb(data).toFixed(2));
+            let silverman_bw = Number(utils.silvermansRuleOfThumb(data).toFixed(2));
             this.$emit("updateBW", silverman_bw); // triggle setting update
 
             if(!this.isFirstLoading)
@@ -118,6 +147,7 @@ export default {
         .catch(e => { console.log(e.message); })
     },
     renderDensityMapAndColorbar(data, params) {
+      const startTime = performance.now();
       let tmpParams = params === undefined ? this.params : params;
       let mapWidth = Math.trunc(tmpParams.width/2), mapHeight = Math.trunc(tmpParams.height/2); // make the display size of outlier larger
       let d2 = density2d(data, { bandwidth: tmpParams.large_bw, extent: this.extent, bins: [mapWidth, mapHeight] });
@@ -126,6 +156,8 @@ export default {
       let small_bw_d2 = density2d(data, { bandwidth: tmpParams.small_bw, extent: this.extent, bins: [mapWidth, mapHeight] });
       let small_bw_points = Array.from(small_bw_d2.grid());
       small_bw_points = window.math.multiply(small_bw_points, data.length/window.math.sum(small_bw_points));
+      const endTime = performance.now();
+      console.log(`${this.datasetName} KDE time elapsed: ${(endTime-startTime).toFixed(2)}ms`);
 
       this.renderDensityMap(points, small_bw_points, tmpParams);
       this.generateColorbar(points, tmpParams);

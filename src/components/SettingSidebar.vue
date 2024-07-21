@@ -17,7 +17,8 @@ export default {
         phi: -25,
       },
       silverman_bw: 1,
-      datasets: ['diabetes', 'facial', 'PersonActivity', 'taxis', 'CreditCardFraud', 'satimage', 'synthesis1', 'synthesis2', 'synthesis3', 'synthesis4', 'synthesis5'],
+      datasets: ['facial', 'taxis', 'HR_diagram', 'diamonds', 'uk_traffic_accident', 'PersonActivity', 'CreditCardFraud',
+      'diabetes', 'satimage', 'synthesis1', 'synthesis2', 'synthesis3', 'synthesis4', 'synthesis5'],
       colormaps: ['Magma', 'Plasma', 'Viridis', 'Inferno', 'Turbo', 'Cividis', ],
     }
   },
@@ -159,7 +160,7 @@ export default {
       </el-form-item>
     </el-form>
     <div class="warning">
-      Note: Processing the taxis and synthesis5 datasets may be slow due to their large size!
+      Note: Processing taxis, uk and synthesis5 datasets may be slow due to their large size!
     </div>
   </el-aside>
 </template>
