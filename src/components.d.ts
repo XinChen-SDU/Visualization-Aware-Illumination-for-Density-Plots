@@ -21,6 +21,7 @@ declare module 'vue' {
     ElOption: typeof import('element-plus/es')['ElOption']
     ElSelect: typeof import('element-plus/es')['ElSelect']
     ElSlider: typeof import('element-plus/es')['ElSlider']
+    ElUpload: typeof import('element-plus/es')['ElUpload']
     IEpCircleCheck: typeof import('~icons/ep/circle-check')['default']
     SettingSidebar: typeof import('./components/SettingSidebar.vue')['default']
   }

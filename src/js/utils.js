@@ -1,7 +1,25 @@
 function parseData(text) {
-    return text.trim().split('\r\n').map(line => 
-        line.split(',').map(x=>parseFloat(x))
-    );
+    const lines = text.trim().split('\r\n');
+    let data = [];
+    for(const line of lines) {
+        const result = line.split(',').map(x=>parseFloat(x));
+        if(!result.some(isNaN)) {
+            data.push(result.slice(0, 2));
+        }
+    }
+    return data;
+}
+
+function loadLocalData(file) {
+    return new Promise((resolve, reject) => {
+        var fr = new FileReader();  
+        fr.onload = () => {
+            resolve(fr.result)
+        };
+        fr.onerror = reject;
+        fr.readAsText(file.raw);
+    }).then(text => parseData(text))
+    .catch(err => console.log(err.message))
 }
 
 function fetchData(src) {
@@ -98,6 +116,7 @@ function getInterpolateFunc(colormap) {
 
 export default {
     fetchData,
+    loadLocalData,
     drawImageData,
     loadScript,
     getInterpolateFunc,

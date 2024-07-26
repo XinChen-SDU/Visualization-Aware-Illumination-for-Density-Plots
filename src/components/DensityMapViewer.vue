@@ -38,6 +38,7 @@ export default {
   data() {
     return {
       datasetName: '',
+      customFileUID: undefined,
       dataBeingDisplayed: undefined,
       regionBrush: undefined,
       regionLensFactor: 0,
@@ -47,13 +48,38 @@ export default {
     }
   },
   methods: {
-    createDensityPlot(settings) {
+    async createDensityPlot(settings) {
       if(settings) { this.params = settings; }
+      if (!window.math) {
+        try {
+          const prefix = import.meta.url.includes('src') ? 'src' : '';
+          await utils.loadScript(`${import.meta.env.BASE_URL}${prefix}/worker/math.min.js`);
+          console.log('mathjs version:', window.math.version);
+        } catch (error) {
+          console.error('Failed to load mathjs:', error);
+        }
+      }
 
       if(this.params.dataset === undefined) {
         console.log('is empty');
         return;
-      } else if (this.params.dataset !== this.datasetName) {
+      } else if (this.params.dataset === 'Custom' && this.params.customFile.uid !== this.customFileUID) {
+        this.datasetName = this.params.dataset;
+        this.customFileUID = this.params.customFile.uid;
+        utils.loadLocalData(this.params.customFile)
+          .then((data) => {
+            if (!data) { throw new Error('undefined data'); }
+            this.dataBeingDisplayed = data;
+            const minVals = window.math.min(data, 0), maxVals = window.math.max(data, 0);
+            const offsets = window.math.multiply([maxVals[0] - minVals[0], maxVals[1] - minVals[1]], 0.02);
+            this.extent = [[minVals[0] - offsets[0], maxVals[0] + offsets[0]],
+                          [minVals[1] - offsets[1], maxVals[1] + offsets[1]]];
+
+            let silverman_bw = Number(utils.silvermansRuleOfThumb(data).toFixed(2));
+            this.$emit("updateBW", silverman_bw); // triggle setting update
+            console.log(`Custom Dataset ${this.params.customFile.name} loaded.`);
+          });
+      } else if (this.params.dataset !== 'Custom' && this.params.dataset !== this.datasetName) {
         this.datasetName = this.params.dataset;
         let dataSrc = `${import.meta.env.BASE_URL}datasets/` + this.datasetName;
         if(!this.isFirstLoading)
@@ -63,26 +89,10 @@ export default {
             background: 'rgba(0, 0, 0, 0.7)',
           })
         utils.fetchData(dataSrc + '.csv')
-          .then(async (data) => {
+          .then((data) => {
             if (!data) { throw new Error('undefined data'); }
             this.dataBeingDisplayed = data;
-            if (!window.math) {
-              try {
-                const prefix = import.meta.url.includes('src') ? 'src' : '';
-                await utils.loadScript(`${import.meta.env.BASE_URL}${prefix}/worker/math.min.js`);
-                console.log('mathjs version:', window.math.version);
-              } catch (error) {
-                console.error('Failed to load mathjs:', error);
-              }
-            }
-            if (this.datasetName in dataset2extent) {
-              this.extent = dataset2extent[this.datasetName];
-            } else {
-              const minVals = window.math.min(data, 0), maxVals = window.math.max(data, 0);
-              const offsets = window.math.multiply([maxVals[0] - minVals[0], maxVals[1] - minVals[1]], 0.02);
-              this.extent = [[minVals[0] - offsets[0], maxVals[0] + offsets[0]],
-                            [minVals[1] - offsets[1], maxVals[1] + offsets[1]]];
-            }
+            this.extent = dataset2extent[this.datasetName];
 
             let silverman_bw = Number(utils.silvermansRuleOfThumb(data).toFixed(2));
             this.$emit("updateBW", silverman_bw); // triggle setting update
