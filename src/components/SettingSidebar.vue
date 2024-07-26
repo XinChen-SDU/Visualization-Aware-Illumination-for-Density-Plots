@@ -58,6 +58,8 @@ export default {
   watch: {
     settings: {
       handler(newSettings) {
+        newSettings.width = Math.max(newSettings.width, 10);
+        newSettings.height = Math.max(newSettings.height, 10);
         this.updateSettings(newSettings);
       },
       deep: true,
