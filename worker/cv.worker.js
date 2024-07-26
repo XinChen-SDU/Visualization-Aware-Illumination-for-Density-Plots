@@ -53,6 +53,8 @@ function PCA(data) {
 }
 
 function setupLightDirection(normal_xy) {
+  if(normal_xy.length === 0) // azimuth = 120°, elevation = 60°
+    return [-0.25     ,  0.4330127,  0.8660254]
   let normal_a = math.mean(normal_xy, 0);
   let i = normal_xy.length;
   while (i--) {
