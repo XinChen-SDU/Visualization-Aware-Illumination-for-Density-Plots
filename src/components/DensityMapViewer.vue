@@ -6,7 +6,7 @@ import utils from '@/js/utils'
 import { select } from 'd3-selection'
 import { scaleSequential } from 'd3-scale'
 import { ElLoading } from 'element-plus'
-import { density2d } from 'fast-kde'
+import { toRaw } from 'vue';
 
 // store the extents of existing datasets for acceleration
 const dataset2extent = 
@@ -14,6 +14,7 @@ const dataset2extent =
     [-25.851125881720755, 9.941852762868804]],
   'diabetes': [[-1.62, 134.62], [-0.6000000000000001, 82.6]],
   'diamonds': [[-0.21480000000000002, 10.9548], [-43.94, 19192.94]],
+  'Barcelona': [[2.0853191499999997, 2.22910785], [41.315836499999996, 41.4755015]],
   'facial': [[280.46862, 373.51637999999997],
     [195.98394000000002, 271.85506000000004]],
   'HR_diagram': [[-0.7958553039999999, 5.1300181039999995],
@@ -45,6 +46,10 @@ export default {
       params: undefined,
       extent: [],
       isFirstLoading: true,
+      previousParams: undefined,
+      dataChanged: false,
+      large_density_field: undefined,
+      small_density_field: undefined,
     }
   },
   methods: {
@@ -78,6 +83,7 @@ export default {
             let silverman_bw = Number(utils.silvermansRuleOfThumb(data).toFixed(2));
             this.$emit("updateBW", silverman_bw); // triggle setting update
             console.log(`Custom Dataset ${this.params.customFile.name} loaded.`);
+            this.dataChanged = true;
           });
       } else if (this.params.dataset !== 'Custom' && this.params.dataset !== this.datasetName) {
         this.datasetName = this.params.dataset;
@@ -101,10 +107,13 @@ export default {
               ElLoading.service().close();
             console.log(`Dataset ${this.datasetName} loaded.`);
             this.isFirstLoading = false;
+            this.dataChanged = true;
           });
       } else { // data has been loaded
         this.renderDensityMapAndColorbar(this.dataBeingDisplayed);
+        this.dataChanged = false;
       }
+      this.previousParams = {...this.params};
     },
     // createRegionLensBrush() {
     //   let mapBrushLayer = select('.el-main').append('svg')
@@ -160,17 +169,26 @@ export default {
       const startTime = performance.now();
       let tmpParams = params === undefined ? this.params : params;
       let mapWidth = Math.trunc(tmpParams.width/2), mapHeight = Math.trunc(tmpParams.height/2); // make the display size of outlier larger
-      let d2 = density2d(data, { bandwidth: tmpParams.large_bw, extent: this.extent, bins: [mapWidth, mapHeight] });
-      let points = Array.from(d2.grid());
-      points = window.math.multiply(points, data.length/window.math.sum(points));
-      let small_bw_d2 = density2d(data, { bandwidth: tmpParams.small_bw, extent: this.extent, bins: [mapWidth, mapHeight] });
-      let small_bw_points = Array.from(small_bw_d2.grid());
-      small_bw_points = window.math.multiply(small_bw_points, data.length/window.math.sum(small_bw_points));
-      const endTime = performance.now();
-      console.log(`${this.datasetName} KDE time elapsed: ${(endTime-startTime).toFixed(2)}ms`);
+      if(tmpParams.colormap !== this.previousParams.colormap
+      || tmpParams.eta !== this.previousParams.eta
+      || tmpParams.phi !== this.previousParams.phi) {
+        console.log("The changes don't affect the density maps, thus avoiding the need to recompute the KDE.");
+      }
+      else if(tmpParams.large_bw !== this.previousParams.large_bw && !this.dataChanged) {
+        this.large_density_field = utils.computeKDEfield(data, tmpParams.large_bw, this.extent, mapWidth, mapHeight);
+      }
+      else if(tmpParams.small_bw !== this.previousParams.small_bw && !this.dataChanged) {
+        this.small_density_field = utils.computeKDEfield(data, tmpParams.small_bw, this.extent, mapWidth, mapHeight);
+      }
+      else {
+        this.large_density_field = utils.computeKDEfield(data, tmpParams.large_bw, this.extent, mapWidth, mapHeight);
+        this.small_density_field = utils.computeKDEfield(data, tmpParams.small_bw, this.extent, mapWidth, mapHeight);
+      }
 
-      this.renderDensityMap(points, small_bw_points, tmpParams);
-      this.generateColorbar(points, tmpParams);
+      this.renderDensityMap(toRaw(this.large_density_field), toRaw(this.small_density_field), tmpParams);
+      this.generateColorbar(this.large_density_field, tmpParams);
+      const endTime = performance.now();
+      console.log(`${this.datasetName} execution time elapsed: ${(endTime-startTime).toFixed(2)}ms`);
     },
     generateColorbar(data, params) {
       if(params.colormap === undefined) { return; }
@@ -219,12 +237,27 @@ export default {
 <template>
   <el-container>
     <el-header>
-      <el-button @click.prevent="takeScreenshot">Screenshot</el-button>
+      <el-button @click.prevent="takeScreenshot">Capture the visualization</el-button>
     </el-header>
     <el-main>
       <canvas id="densitymap"></canvas>
       <svg id="colorbar" width="100" height="400"></svg>
     </el-main>
+    <el-footer>
+      <p id="acknowledgement"><span>Acknowledgement</span>: The datasets used on the website and their sources are listed below.</p>
+      <ul>
+        <li><a href="https://archive.ics.uci.edu/dataset/317/grammatical+facial+expressions">facial</a></li>
+        <li><a href="https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page">taxis</a></li>
+        <li><a href="https://www.aanda.org/articles/aa/full_html/2018/08/aa33051-18/aa33051-18.html">HR_diagram</a></li>
+        <li><a href="https://archive.ics.uci.edu/dataset/196/localization+data+for+person+activity">PersonActivity</a></li>
+        <li><a href="https://www.kaggle.com/datasets/xvivancos/barcelona-data-sets">Barcelona</a></li>
+        <li><a href="https://www.kaggle.com/datasets/shivam2503/diamonds">diamonds</a></li>
+        <li><a href="https://www.data.gov.uk/dataset/cb7ae6f0-4be6-4935-9277-47e5ce24a11f/road-safety-data">uk_traffic_accident</a></li>
+        <li><a href="https://ieeexplore.ieee.org/document/8038008">CreditCardFraud</a></li>
+        <li><a href="https://archive.ics.uci.edu/dataset/296/diabetes+130-us+hospitals+for+years+1999-2008">diabetes</a></li>
+        <li><a href="https://archive.ics.uci.edu/dataset/146/statlog+landsat+satellite">satimage</a></li>
+      </ul>
+    </el-footer>
   </el-container>
 </template>
 
@@ -233,5 +266,28 @@ export default {
   background-color: #eee;
   display: flex;
   align-items: center;
+}
+
+.el-footer {
+  background-color: #eee;
+}
+
+.el-footer > * {
+  margin-top: 4px;
+  margin-bottom: 4px;
+}
+
+#acknowledgement > span {
+  font-weight: bold;
+}
+
+ul {
+  list-style-type: none; /* 移除默认的项目符号 */
+  padding: 0; /* 清除默认的内边距 */
+  overflow: hidden; /* 如果列表项超出容器范围，隐藏溢出部分 */
+}
+li {
+  float: left; /* 让列表项水平排列 */
+  margin-right: 10px; /* 在列表项之间添加一些间距 */
 }
 </style>

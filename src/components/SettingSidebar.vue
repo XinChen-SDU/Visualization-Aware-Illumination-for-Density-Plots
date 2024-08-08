@@ -19,7 +19,7 @@ export default {
         customFile: undefined,
       },
       silverman_bw: 1,
-      datasets: ['facial', 'taxis', 'HR_diagram', 'diamonds', 'uk_traffic_accident', 'PersonActivity', 'CreditCardFraud',
+      datasets: ['facial', 'taxis', 'HR_diagram', 'PersonActivity', 'Barcelona', 'diamonds', 'uk_traffic_accident', 'CreditCardFraud',
       'diabetes', 'satimage', 'synthesis1', 'synthesis2', 'synthesis3', 'synthesis4', 'synthesis5', 'Custom'],
       colormaps: ['Magma', 'Plasma', 'Viridis', 'Inferno', 'Turbo', 'Cividis', ],
     }
@@ -30,13 +30,16 @@ export default {
     }, 200),
     useSilvermanBandwidth(bandwidth) {
       this.silverman_bw=bandwidth;
-      if(this.settings.dataset === 'taxis') {
+      if(this.settings.dataset === 'taxis' || this.settings.dataset === 'Barcelona') {
         this.settings = {...this.settings,
           large_bw: bandwidth,
           small_bw: 2e-4,
         }
       } else {
-        this.settings.large_bw=bandwidth;
+        this.settings = {...this.settings,
+          large_bw: bandwidth,
+          small_bw: Number((1/Math.trunc(this.settings.width/2)).toFixed(4)),
+        }
       }
     },
     resetSettings() {
@@ -50,7 +53,7 @@ export default {
       }
       this.settings = {...this.settings,
         large_bw: this.silverman_bw,
-        small_bw: this.settings.dataset === 'taxis' ? 2e-4
+        small_bw: (this.settings.dataset === 'taxis' || this.settings.dataset === 'Barcelona') ? 2e-4
         : Number((1/Math.trunc(this.settings.width/2)).toFixed(4)),
         eta: 5,
         phi: tmpPhi,
@@ -171,7 +174,7 @@ export default {
   }
 
   .warning {
-    color: #e6a23c;
+    color: red;
     background-color: #dbdbdb;
     text-align: center;
     margin: 0 10px 0 10px;

@@ -93,6 +93,15 @@ function silvermansRuleOfThumb(data) {
     return Math.min(...bw_list);
   }
   
+import { density2d } from 'fast-kde'
+
+function computeKDEfield(data, bw, ext, width, height) {
+    let d2 = density2d(data, { bandwidth: bw, extent: ext, bins: [width, height] });
+    let points = Array.from(d2.grid());
+    points = window.math.multiply(points, data.length/window.math.sum(points));
+    return points;
+}
+
 import { interpolatePlasma, interpolateInferno, interpolateCividis, interpolateViridis, interpolateTurbo, interpolateMagma } from 'd3-scale-chromatic'
 
 function getInterpolateFunc(colormap) {
@@ -122,4 +131,5 @@ export default {
     getInterpolateFunc,
     extent,
     silvermansRuleOfThumb,
+    computeKDEfield,
 };

@@ -1,6 +1,6 @@
 {
   "name": "visualization-aware_illuminated_density_plots",
-  "version": "0.1",
+  "version": "0.2",
   "private": true,
   "type": "module",
   "scripts": {
