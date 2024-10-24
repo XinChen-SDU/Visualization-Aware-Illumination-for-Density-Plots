@@ -76,8 +76,19 @@ function setupLightDirection(normal_xy) {
 }
 
 // compute the normal vectors from the partial derivatives
-function calNormal(elevation, vert_exag) {
-  cv.multiply(elevation, cv.Mat.ones(elevation.rows, elevation.cols, cv.CV_32F), elevation, vert_exag);
+function calNormal(elevation, vert_exag, regionLens) {
+  if(regionLens.dataMinX !== -1 && regionLens.dataMinY !== -1) { // setting local eta
+    let minX = regionLens.dataMinX/2, maxX = regionLens.dataMaxX/2,
+        minY = regionLens.dataMinY/2, maxY = regionLens.dataMaxY/2;
+    for (let i = 0; i < elevation.rows; ++i) 
+      for (let j = 0; j < elevation.cols; ++j)
+        if(i >= minY && i < maxY && j >= minX && j < maxX)
+          elevation.floatPtr(i, j)[0] *= regionLens.factor;
+        else
+          elevation.floatPtr(i, j)[0] *= vert_exag;
+  } else {
+    cv.multiply(elevation, cv.Mat.ones(elevation.rows, elevation.cols, cv.CV_32F), elevation, vert_exag);
+  }
   let grad_x = new cv.Mat(), grad_y = new cv.Mat();
   cv.Sobel(elevation, grad_x, ddepth=cv.CV_32F, dx=1, dy=0, ksize=1);
   cv.Sobel(elevation, grad_y, ddepth=cv.CV_32F, dx=0, dy=1, ksize=1);
@@ -122,15 +133,16 @@ function blendInL(src, dst, intensity) {
  * With OpenCV we have to work with the images as cv.Mat (matrices),
  * so you'll have to transform the ImageData to it.
  */
-function enhanceDensityMap({ msg, densitymap, small_bw_data, paramStr }) {
+function enhanceDensityMap({ msg, densitymap, small_bw_data, paramStr, regionLensStr }) {
   let params = JSON.parse(paramStr);
+  let regionLens = JSON.parse(regionLensStr);
   let mapWidth = Math.trunc(params.width/2), mapHeight = Math.trunc(params.height/2);
   let src = cv.matFromArray(mapHeight, mapWidth, cv.CV_32F, densitymap),
   small_bw_src = cv.matFromArray(mapHeight, mapWidth, cv.CV_32F, small_bw_data);
 
   let diff = new cv.Mat();
   cv.subtract(src, small_bw_src, diff);
-  const normal = calNormal(diff, params.eta);
+  const normal = calNormal(diff, params.eta, regionLens);
 
   // filter out empty regions and select the x- and y- dimension
   const filtered_normal = normal.filter((_, i) => small_bw_data[i] > THRESHOLD_0);
