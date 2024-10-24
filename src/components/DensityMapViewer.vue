@@ -4,6 +4,7 @@ import { colorbarV } from '@/js/colorbar'
 import utils from '@/js/utils'
 
 import { select } from 'd3-selection'
+import { brush } from 'd3-brush'
 import { scaleSequential } from 'd3-scale'
 import { ElLoading } from 'element-plus'
 import { toRaw } from 'vue';
@@ -41,8 +42,6 @@ export default {
       datasetName: '',
       customFileUID: undefined,
       dataBeingDisplayed: undefined,
-      regionBrush: undefined,
-      regionLensFactor: 0,
       params: undefined,
       extent: [],
       isFirstLoading: true,
@@ -50,6 +49,9 @@ export default {
       dataChanged: false,
       large_density_field: undefined,
       small_density_field: undefined,
+      tableData: [{ dataMinX:-1,dataMinY:-1,dataMaxX:-1,dataMaxY:-1,factor:5 }],
+      onBrushing: false,
+      regionBrush: undefined,
     }
   },
   methods: {
@@ -113,53 +115,14 @@ export default {
         this.renderDensityMapAndColorbar(this.dataBeingDisplayed);
         this.dataChanged = false;
       }
+      select('#mapBrushLayer').attr('width', this.params.width).attr('height', this.params.height); 
+      this.regionBrush.extent([[0,0],[this.params.width,this.params.height]]);
+      select('#mapBrushLayer > g').call(this.regionBrush);
       this.previousParams = {...this.params};
     },
-    // createRegionLensBrush() {
-    //   let mapBrushLayer = select('.el-main').append('svg')
-    //                     .attr('class', 'brush')
-    //                     .attr('id', 'mapBrushLayer')
-    //                     .attr('width', this.params.width)
-    //                     .attr('height', this.params.height)
-    //                     .style('position', 'absolute').lower();
-    //   this.regionBrush = brush()
-    //     .extent([[0,0],[this.params.width,this.params.height]])
-    //     .on('end', ({selection}) => {
-    //       let index = this.tableData.findIndex(i=>i.type=='Region lens');
-    //       if (selection) { // top left and bottom right corners
-    //         let regionLensInfo = {
-    //           type: 'Region lens',
-    //           range: JSON.stringify(selection.map(row=>row.map(Math.round))),
-    //           factor: index !== -1 ? this.tableData[index].factor : this.regionLensFactor,
-    //         };
-    //         if (index === -1) { this.tableData.push(regionLensInfo); }
-    //         else { this.tableData[index] = regionLensInfo; }
-    //         this.regionLensFactor = regionLensInfo.factor;
-    //       }
-    //       else {
-    //         if (index !== -1) { this.tableData.splice(index, 1); }
-    //       }
-    //       this.renderDensityMap(this.dataBeingDisplayed, this.params);
-    //     });
-    //   mapBrushLayer.append('g')
-    //     .call(this.regionBrush);
-    // },
     renderDensityMap(data, small_bw_data, params) {
-      // let regionLensInfo = this.tableData.find(i=>i.type=='Region lens'), regionLens;
-      // if (regionLensInfo) {
-      //   let range = JSON.parse(regionLensInfo.range);
-      //   regionLens = {
-      //     dataMinX: Math.round(range[0][0]/this.params.width*this.level0_Width),
-      //     dataMinY: Math.round(range[0][1]/this.params.height*this.level0_Height),
-      //     dataMaxX: Math.round(range[1][0]/this.params.width*this.level0_Width),
-      //     dataMaxY: Math.round(range[1][1]/this.params.height*this.level0_Height),
-      //     factor: Number(regionLensInfo.factor)
-      //   };
-      // }
-      // else { regionLens = { dataMinX:-1,dataMinY:-1,dataMaxX:-1,dataMaxY:-1,factor:0 } }
-
       let canvas = document.getElementById('densitymap');
-      cv.enhanceDensityMap(data, small_bw_data, params)
+      cv.enhanceDensityMap(data, small_bw_data, params, this.tableData[0])
         .then(e => {
           utils.drawImageData(canvas, e.data.imgData);
         })
@@ -229,7 +192,28 @@ export default {
         ElLoading.service().close();
         console.log('OpenCV.js is ready.');
       })
-      .catch(err => { console.log(err.message); })
+      .catch(err => { console.log(err.message); });
+
+    this.regionBrush = brush()
+      .on('end', ({selection}) => {
+        if (selection) { // top left and bottom right corners
+          select(".selection").attr("stroke-width", 2).style("fill-opacity", 0);
+          this.tableData[0] = {
+            dataMinX: Math.round(selection[0][0]),
+            dataMinY: Math.round(this.params.height-selection[1][1]),
+            dataMaxX: Math.round(selection[1][0]),
+            dataMaxY: Math.round(this.params.height-selection[0][1]),
+            factor: this.tableData[0].factor
+          };
+          this.onBrushing = true;
+        } else {
+          this.tableData[0] = { dataMinX:-1,dataMinY:-1,dataMaxX:-1,dataMaxY:-1,factor:this.tableData[0].factor };
+          this.onBrushing = false;
+        }
+        this.renderDensityMap(toRaw(this.large_density_field), toRaw(this.small_density_field), this.params);
+      });
+    select('#mapBrushLayer').append('g')
+      .call(this.regionBrush);
   }
 }
 </script>
@@ -238,8 +222,29 @@ export default {
   <el-container>
     <el-header>
       <el-button @click.prevent="takeScreenshot">Capture the visualization</el-button>
+      <el-table id="lensSetting" v-show="onBrushing" :data="tableData" :show-header="false">
+        <el-table-column>
+          <template #default="scope">
+            <tr>
+              <th>Range</th>
+              <td>{{ JSON.stringify([[scope.row.dataMinX, scope.row.dataMaxX], [scope.row.dataMinY, scope.row.dataMaxY]]) }}</td>
+              <th>Local η</th>
+              <td>
+                <el-input-number
+                  v-model="scope.row.factor"
+                  :min="0.01"
+                  :max="50"
+                  :step="0.01"
+                  size="small"
+                  style="width:90px;"/>
+              </td>
+            </tr>
+          </template>
+        </el-table-column>
+      </el-table>
     </el-header>
     <el-main>
+      <svg class="brush" id="mapBrushLayer" width="900" height="600" style="position: absolute;"></svg>
       <canvas id="densitymap"></canvas>
       <svg id="colorbar" width="100" height="400"></svg>
     </el-main>
@@ -289,5 +294,20 @@ ul {
 li {
   float: left; /* 让列表项水平排列 */
   margin-right: 10px; /* 在列表项之间添加一些间距 */
+}
+.el-table {
+  --el-table-tr-bg-color: #eee;
+  --el-table-row-hover-bg-color: #eee;
+  --el-scrollbar-hover-opacity: 1.0;
+}
+.el-table__row {
+  display: contents; /* 使 tr 元素的行为像普通的 tr 元素 */
+}
+th, td {
+  border: 1px solid #dfe6ec;
+  padding: 8px;
+  text-align: left;
+  background-color: #fff;
+  line-height: 16px;
 }
 </style>

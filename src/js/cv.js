@@ -58,9 +58,10 @@ class CV {
   /**
    * apply the user-specified filter to the given density map
    */
-  enhanceDensityMap(large_bw_data, small_bw_data, params) {
+  enhanceDensityMap(large_bw_data, small_bw_data, params, regionLens) {
     let paramStr = JSON.stringify(params);
-    return this._dispatch({msg: 'enhancing', densitymap: large_bw_data, small_bw_data, paramStr})
+    let regionLensStr = JSON.stringify(regionLens);
+    return this._dispatch({msg: 'enhancing', densitymap: large_bw_data, small_bw_data, paramStr, regionLensStr})
   }
 }
 
