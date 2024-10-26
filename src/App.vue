@@ -32,7 +32,7 @@ export default {
   <el-container>
     <el-header>
       <img alt="Density logo" class="logo" src="./assets/density-plot-logo.svg" width="65" height="65" />
-      <span class="title">Visualization-aware Illuminated Density Plots</span>
+      <span class="title">Visualization-Driven Illuminated Density Plots</span>
     </el-header>
     <el-container>
       <SettingSidebar @update="updateDensityPlot" ref="sidebar"/>
