@@ -28,3 +28,6 @@ coverage
 *.sw?
 
 *.tsbuildinfo
+
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/

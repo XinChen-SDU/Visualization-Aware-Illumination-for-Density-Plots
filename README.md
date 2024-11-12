@@ -1,28 +1,71 @@
 # Visualization-Driven Illumination for Density Plots
 
-An interactive prototype for the algorithm proposed in our IEEE TVCG submission "Visualization-Driven Illumination for Density Plots".
+An interactive prototype for the technique proposed in our IEEE TVCG submission "Visualization-Driven Illumination for Density Plots".
+
+![Teaser Image](src/assets/teaser.png)
+
+## Demo
+
+You can try our technique through the online application available at <https://xinchen-sdu.github.io/Visualization-Aware-Illumination-for-Density-Plots/>.
+
 **The format of the input custom dataset should be a CSV file consisting of two columns of numbers without a header.**
 
 ## Project Setup
 
-```sh
-npm install
-```
+We offer two versions to test the VIDP technique, you can choose whichever you prefer.
 
-### Compile and Hot-Reload for Development
+### JavaScript version
+
+1. Clone this repository
+
+2. Compile and Hot-Reload for Development
 
 ```sh
 npm run dev
 ```
 
-### Compile and Minify for Production
+3. Compile and Minify for Production
 
 ```sh
 npm run build
 ```
 
-### Lint with [ESLint](https://eslint.org/)
+BTW, you can lint the project with [ESLint](https://eslint.org/)
 
 ```sh
 npm run lint
+```
+
+### Python version
+
+1. Clone this repository
+
+2. Install the following dependencies
+```
+pip install notebook==6.5.6 numpy==1.21.5 pandas==1.4.3 matplotlib==3.6.3 opencv-contrib-python==4.10.0.82 KDEpy==1.1.8 scikit-learn==1.1.3 pycolormap-2d==1.0.10
+```
+
+3. Start jupyter notebook
+```
+jupyter notebook
+```
+
+4. Open illumination.ipynb
+
+## License
+
+This code is licensed under the MIT License. If you use our data or code in your work, please cite our paper:
+
+```
+@article{chen2024vidp,
+  author={Chen, Xin and Wang, Yunhai and Bao, Huaiwei and Lu, Kecheng and Jo, Jaemin and Fu, Chi-Wing and Fekete, Jean-Daniel},
+  journal={IEEE Transactions on Visualization and Computer Graphics}, 
+  title={Visualization-Driven Illumination for Density Plots}, 
+  year={2024},
+  volume={},
+  number={},
+  pages={1-14},
+  keywords={Density plot;illumination;image composition;shading},
+  doi={10.1109/TVCG.2024.3495695}
+}
 ```
