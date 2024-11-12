@@ -12,9 +12,11 @@ You can try our technique through the online application available at <https://x
 
 ## Project Setup
 
-We offer two versions to test the VIDP technique, you can choose whichever you prefer.
+We offer two versions to experience the VIDP technique, you can choose whichever you prefer.
 
 ### JavaScript version
+
+We developed this prototype on Ubuntu 20.04 LTS with [Vue 3](https://vueframework.com/), [Element Plus](https://element-plus.org/), [D3.js](https://d3js.org/), and [fast-kde](https://github.com/uwdata/fast-kde).
 
 1. Clone this repository
 
@@ -37,6 +39,8 @@ npm run lint
 ```
 
 ### Python version
+
+We tested our code on Ubuntu 20.04 LTS with Python 3.8.10.
 
 1. Clone this repository
 
