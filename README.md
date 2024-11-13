@@ -2,6 +2,9 @@
 
 An interactive prototype for the technique proposed in our IEEE TVCG submission "Visualization-Driven Illumination for Density Plots".
 
+The paper introduces an innovative density plot design that integrates two key components: (i) a visualization-driven illumination model tailored to enhance density-plot-specific analysis tasks, and (ii) a novel image composition technique to reduce the interference between image shading and color-encoded density values.
+VIDP is able to maintain the original colors and reveal low-density outliers at the same time, and thus provides a more accurate perception of relative data density than existing techniques.
+
 ![Teaser Image](src/assets/teaser.png)
 
 ## Demo
