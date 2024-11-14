@@ -23,13 +23,18 @@ We developed this prototype on Ubuntu 20.04 LTS with [Vue 3](https://vueframewor
 
 1. Clone this repository
 
-2. Compile and Hot-Reload for Development
+2. Install necessary dependencies
+```sh
+npm install
+```
+
+3. Compile and Hot-Reload for Development
 
 ```sh
 npm run dev
 ```
 
-3. Compile and Minify for Production
+4. Compile and Minify for Production
 
 ```sh
 npm run build
