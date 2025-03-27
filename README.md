@@ -69,15 +69,15 @@ jupyter notebook
 This code is licensed under the MIT License. If you use our data or code in your work, please cite our paper:
 
 ```
-@article{chen2024vidp,
+@article{chen2025vidp,
   author={Chen, Xin and Wang, Yunhai and Bao, Huaiwei and Lu, Kecheng and Jo, Jaemin and Fu, Chi-Wing and Fekete, Jean-Daniel},
   journal={IEEE Transactions on Visualization and Computer Graphics}, 
   title={Visualization-Driven Illumination for Density Plots}, 
-  year={2024},
-  volume={},
-  number={},
-  pages={1-14},
-  keywords={Density plot;illumination;image composition;shading},
+  year={2025},
+  volume={31},
+  number={2},
+  pages={1631-1644},
+  keywords={Image color analysis;Lighting;Data visualization;Visualization;Distortion;Kernel;Estimation;Computational modeling;Analytical models;Shape;Density plot;illumination;image composition;shading},
   doi={10.1109/TVCG.2024.3495695}
 }
 ```
